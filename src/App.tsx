@@ -1,28 +1,22 @@
 import React, {ChangeEvent, useEffect, useRef, useState} from 'react'
 import './App.css'
-import io from 'socket.io-client'
-import {applyMiddleware, combineReducers, createStore} from 'redux'
-import thunk from 'redux-thunk'
-import {useDispatch, useSelector} from "react-redux";
+import {useDispatch, useSelector} from 'react-redux'
+import {createConnection, destroyConnection, sendMessage, setClientName, typeMessage} from './chat-reducer'
+import {AppDispatchType, RootReducerType} from './store'
 
-const socket = io('http://localhost:3009/')
+export const App =() => {
+    const messages = useSelector((state: RootReducerType) => state.chat.messages)
+    const typingUser = useSelector((state: RootReducerType) => state.chat.typingUser)
 
-const rootReducer = combineReducers({chat: chatReducer})
-type AppStateType = ReturnType<typeof rootReducer>
-const store = createStore(rootReducer, applyMiddleware(thunk))
-
-
-function App() {
-
-    const messages = useSelector((state: AppStateType) => state.chat.messages)
-    const dispatch = useDispatch()
+    const dispatch = useDispatch<AppDispatchType>()
 
     useEffect(() => {
-        // dispatch(createConnection())
+        dispatch(createConnection())
+        return () => {
+            dispatch(destroyConnection())
+        }
     }, [])
 
-
-    // const [messages, setMessages] = useState<Array<any>>([])
     const [message, setMessage] = useState('hello')
     const [name, setName] = useState('')
 
@@ -35,12 +29,16 @@ function App() {
     }
 
     const onClickTextHandler = () => {
-        socket.emit('client-message-sent', message)
+        dispatch(sendMessage(message))
         setMessage('')
     }
 
     const onClickNameHandler = () => {
-        socket.emit('client-name-sent', name)
+        dispatch(setClientName(name))
+    }
+
+    const onKeyPressHandler = () => {
+        dispatch(typeMessage())
     }
 
     useEffect(() => {
@@ -50,37 +48,42 @@ function App() {
     const messagesAnchorRef = useRef<HTMLDivElement>(null)
 
     return (
-        <div className="App">
-            <div>
-                <div style={{
-                    border: '1px solid black',
-                    padding: '10px',
-                    height: '300px',
-                    width: '300px',
-                    overflow: 'scroll',
-                    margin: '150px auto'
-                }}
-                >
-                    {messages.map(m => {
-                        return <div key={m.id}>
-                            <b>{m.user.name}:</b>{m.message}
-                            <hr/>
-                        </div>
-                    })
-                    }
-                    <div ref={messagesAnchorRef}></div>
-                </div>
+            <div className="App">
                 <div>
-                    <input value={name} onChange={onChangeNameHandler}/>
-                    <button onClick={onClickNameHandler}>Send name</button>
-                </div>
-                <div>
-                    <textarea value={message} onChange={onChangeTextHandler}></textarea>
-                    <button onClick={onClickTextHandler}>Send text</button>
+                    <div style={{
+                        border: '1px solid black',
+                        padding: '10px',
+                        height: '300px',
+                        width: '300px',
+                        overflow: 'scroll',
+                        margin: '150px auto'
+                    }}
+                    >
+                        {messages.map((m) => {
+                            return <div key={m.id}>
+                                <b>{m.user.name}:</b>{m.message}
+                                <hr/>
+                            </div>
+                        })
+                        }
+                        {typingUser.map((u) => {
+                            return <div key={u.id}>
+                                <b>{u.name}:</b>...
+                            </div>
+                        })
+                        }
+                        <div ref={messagesAnchorRef}></div>
+                    </div>
+                    <div>
+                        <input value={name} onChange={onChangeNameHandler}/>
+                        <button onClick={onClickNameHandler}>Send name</button>
+                    </div>
+                    <div>
+                        <textarea value={message} onChange={onChangeTextHandler} onKeyPress={onKeyPressHandler}></textarea>
+                        <button onClick={onClickTextHandler}>Send text</button>
+                    </div>
                 </div>
             </div>
-        </div>
     )
 }
 
-export default App;
