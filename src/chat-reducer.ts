@@ -12,7 +12,8 @@ export const chatReducer = (state: ChatReducerStateType = initialState, action: 
             return {...state, messages: action.messages}
         }
         case 'NEW_MESSAGE_RECEIVED': {
-            return {...state, messages: [...state.messages, action.message],
+            return {
+                ...state, messages: [...state.messages, action.message],
                 typingUser: state.typingUser.filter(u => u.id !== action.message.user.id)
             }
         }
@@ -33,8 +34,9 @@ export const chatAction = {
 
 export const createConnection = (): AppThunkType => (dispatch) => {
     api.createConnection()
-    api.subscribe((messages: MessagesType []) => {
+    api.subscribe((messages: MessagesType [], fn: () => void) => {
             dispatch(chatAction.messagesReceived(messages))
+            fn()
         },
         (message: string) => {
             dispatch(chatAction.newMessageReceived(message))
